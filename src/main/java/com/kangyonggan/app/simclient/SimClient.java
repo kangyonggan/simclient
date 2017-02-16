@@ -5,6 +5,7 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.config.PropertyPlaceholderConfigurer;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -19,21 +20,9 @@ import java.util.Iterator;
  * @author kangyonggan
  * @since 2017/2/16
  */
-public class SimClient {
+public class SimClient extends PropertyPlaceholderConfigurer {
 
-    private String publicKeyPath;
-
-    private String privateKeyPath;
-
-    private String host;
-
-    private int port;
-
-    private String projCode;
-
-    private String env;
-
-    public SimClient() {
+    public SimClient(String publicKeyPath, String privateKeyPath, String host, int port, String projCode, String env) {
         // 私钥
         final PrivateKey privateKey = SecretUtil.getPrivateKey(privateKeyPath);
 
@@ -124,53 +113,5 @@ public class SimClient {
                 }
             }
         }.start();
-    }
-
-    public String getPublicKeyPath() {
-        return publicKeyPath;
-    }
-
-    public void setPublicKeyPath(String publicKeyPath) {
-        this.publicKeyPath = publicKeyPath;
-    }
-
-    public String getPrivateKeyPath() {
-        return privateKeyPath;
-    }
-
-    public void setPrivateKeyPath(String privateKeyPath) {
-        this.privateKeyPath = privateKeyPath;
-    }
-
-    public String getHost() {
-        return host;
-    }
-
-    public void setHost(String host) {
-        this.host = host;
-    }
-
-    public int getPort() {
-        return port;
-    }
-
-    public void setPort(int port) {
-        this.port = port;
-    }
-
-    public String getProjCode() {
-        return projCode;
-    }
-
-    public void setProjCode(String projCode) {
-        this.projCode = projCode;
-    }
-
-    public String getEnv() {
-        return env;
-    }
-
-    public void setEnv(String env) {
-        this.env = env;
     }
 }
