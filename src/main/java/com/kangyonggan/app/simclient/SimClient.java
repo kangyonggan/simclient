@@ -21,13 +21,15 @@ import java.util.Iterator;
  * @since 2017/2/16
  */
 public class SimClient extends PropertyPlaceholderConfigurer {
+    private PrivateKey privateKey;
+    private PublicKey publicKey;
 
     public SimClient(String publicKeyPath, String privateKeyPath, String host, int port, String projCode, String env) {
         // 私钥
-        final PrivateKey privateKey = SecretUtil.getPrivateKey(privateKeyPath);
+        privateKey = SecretUtil.getPrivateKey(privateKeyPath);
 
         // 公钥
-        final PublicKey publicKey = SecretUtil.getPublicKey(publicKeyPath);
+        publicKey = SecretUtil.getPublicKey(publicKeyPath);
 
         Socket socket = null;
         try {
@@ -56,12 +58,19 @@ public class SimClient extends PropertyPlaceholderConfigurer {
             OutputStream os = socket.getOutputStream();
             os.write(bytes);
             os.flush();
+
+            InputStream in = socket.getInputStream();
+            int len;
+            byte b[] = new byte[9999];
+            if ((len = in.read(b, 0, 12)) != -1) {
+                parse(b, len, in);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
 
         final Socket finalSocket = socket;
-        new Thread(){
+        new Thread() {
             @Override
             public void run() {
                 try {
@@ -69,49 +78,57 @@ public class SimClient extends PropertyPlaceholderConfigurer {
                     int len;
                     byte b[] = new byte[9999];
                     while ((len = in.read(b, 0, 12)) != -1) {
-                        // 报文头（总长度8+签名长度4）= 12位
-                        String header = new String(b, 0, len);
-
-                        // 总长度,0~8位
-                        int totalLen = Integer.parseInt(new String(b, 0, 8)) + 8;
-
-                        // 从消息头中获取签名长度，用于读取签名
-                        String signLenStr = new String(b, 8, 4);// 签名长度,最后四位8~12
-                        int signLen = Integer.parseInt(signLenStr);
-
-                        // 计算加密后报文体的长度，用于读取报文体（总长-头-签=密）
-                        int encryptedBytesLen = totalLen - 12 - signLen;
-
-                        // 签名
-                        in.read(b, 0, signLen);
-                        byte[] signBytes = ArrayUtils.subarray(b, 0, signLen);
-
-                        // 密文
-                        byte[] encryptedBytes = new byte[encryptedBytesLen];
-                        in.read(encryptedBytes, 0, encryptedBytesLen);
-
-                        // 解密
-                        byte xmlBytes[] = CryptoUtil.decrypt(encryptedBytes, privateKey, 2048, 11, "RSA/ECB/PKCS1Padding");
-                        String xml = new String(xmlBytes, "UTF-8");
-
-                        // 验签
-                        boolean isValid = CryptoUtil.verifyDigitalSign(xmlBytes, signBytes, publicKey, "SHA1WithRSA");// 验签
-
-                        if (isValid) {
-                            JSONArray jsonArray = JSONArray.parseArray(xml);
-                            for (int i = 0; i < jsonArray.size(); i++) {
-                                JSONObject jsonObject = jsonArray.getJSONObject(i);
-                                String name = jsonObject.getString("name").trim();
-                                String value = jsonObject.getString("value").trim();
-                                System.setProperty(name, value);
-                                PropertiesUtil.putProperties(name, value);
-                            }
-                        }
+                        parse(b, len, in);
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
         }.start();
+    }
+
+    private void parse(byte b[], int len, InputStream in) {
+        try {
+            // 报文头（总长度8+签名长度4）= 12位
+            String header = new String(b, 0, len);
+
+            // 总长度,0~8位
+            int totalLen = Integer.parseInt(new String(b, 0, 8)) + 8;
+
+            // 从消息头中获取签名长度，用于读取签名
+            String signLenStr = new String(b, 8, 4);// 签名长度,最后四位8~12
+            int signLen = Integer.parseInt(signLenStr);
+
+            // 计算加密后报文体的长度，用于读取报文体（总长-头-签=密）
+            int encryptedBytesLen = totalLen - 12 - signLen;
+
+            // 签名
+            in.read(b, 0, signLen);
+            byte[] signBytes = ArrayUtils.subarray(b, 0, signLen);
+
+            // 密文
+            byte[] encryptedBytes = new byte[encryptedBytesLen];
+            in.read(encryptedBytes, 0, encryptedBytesLen);
+
+            // 解密
+            byte xmlBytes[] = CryptoUtil.decrypt(encryptedBytes, privateKey, 2048, 11, "RSA/ECB/PKCS1Padding");
+            String xml = new String(xmlBytes, "UTF-8");
+
+            // 验签
+            boolean isValid = CryptoUtil.verifyDigitalSign(xmlBytes, signBytes, publicKey, "SHA1WithRSA");// 验签
+
+            if (isValid) {
+                JSONArray jsonArray = JSONArray.parseArray(xml);
+                for (int i = 0; i < jsonArray.size(); i++) {
+                    JSONObject jsonObject = jsonArray.getJSONObject(i);
+                    String name = jsonObject.getString("name").trim();
+                    String value = jsonObject.getString("value").trim();
+                    System.setProperty(name, value);
+                    PropertiesUtil.putProperties(name, value);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
