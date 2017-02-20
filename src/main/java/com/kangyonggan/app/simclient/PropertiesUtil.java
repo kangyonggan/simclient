@@ -1,5 +1,7 @@
 package com.kangyonggan.app.simclient;
 
+import lombok.extern.log4j.Log4j2;
+
 import java.util.Properties;
 
 /**
@@ -8,6 +10,7 @@ import java.util.Properties;
  * @author kangyonggan
  * @since 2016/12/6
  */
+@Log4j2
 public class PropertiesUtil {
 
     private static Properties props = new Properties();
@@ -57,6 +60,7 @@ public class PropertiesUtil {
             String value = properties.getProperty(name);
             putProperties(name, value);
             System.setProperty(name, value);
+            log.info("加载本地配置: name:{}, value:{}", name, value);
         }
     }
 
