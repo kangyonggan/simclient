@@ -1,9 +1,5 @@
 package com.kangyonggan.app.simclient;
 
-import java.io.BufferedInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.Properties;
 
 /**
@@ -48,6 +44,20 @@ public class PropertiesUtil {
      */
     public static void putProperties(String name, String value) {
         props.put(name, value);
+    }
+
+    /**
+     * 加载配置
+     *
+     * @param properties
+     */
+    public static void loadProperties(Properties properties) {
+        for (Object key : properties.keySet()) {
+            String name = (String) key;
+            String value = properties.getProperty(name);
+            putProperties(name, value);
+            System.setProperty(name, value);
+        }
     }
 
 }
